@@ -2,7 +2,7 @@
 import argparse
 import git
 import sys
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import time
 
 #Suppress stack traces, but print exceptions.
@@ -16,6 +16,16 @@ def hook(x,y,z):
     else:
         print >> sys.stderr, "\n"+x.__name__
 #sys.excepthook = hook
+
+def strdelta(delta, seconds=False):
+	hours, remainder = divmod(int(delta.total_seconds()), 3600)
+	minutes, seconds = divmod(remainder, 60)
+	if seconds:
+		return '%s hours, %s minutes, and %s seconds' % (hours, minutes, seconds)
+	else:
+		if seconds>=30:
+			minutes=minutes+1
+		return '%s hours and  %s minutes' % (hours, minutes)
 
 parser = argparse.ArgumentParser(description='A git timeclock')
 parser.add_argument('dir', default='.', help='The directory of the git repo', nargs='?')
@@ -79,6 +89,7 @@ if not args.doTime == None:
 
 start=None
 end=None
+deltalist=[]
 for i in repo.tags:
 	if i.tag == None:
 		continue
@@ -90,7 +101,8 @@ for i in repo.tags:
 	if "#tc-start " in x.message:
 		if (not start==None) and (not end==None):
 			delta=end-start
-			print "Work session: "+str(delta)
+			deltalist.append(delta)
+			print "Work session: "+strdelta(delta)
 			start=None
 			end=None
 		start=datetime.fromtimestamp(x.tagged_date)
@@ -98,7 +110,13 @@ for i in repo.tags:
 	elif "#tc-end " in x.message:
 		end=datetime.fromtimestamp(x.tagged_date)
 		print "End: "+str(end)
-
 if (not start==None) and (not end==None):
 	delta=end-start
-	print "Work session: "+str(delta)
+	deltalist.append(delta)
+	print "Work session: "+strdelta(delta)
+
+print "---------"
+deltatotal=timedelta(0)
+for i in deltalist:
+	deltatotal+=i
+print "Totals: "+strdelta(deltatotal)
